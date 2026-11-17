@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragonclaw Home</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐉</text></svg>">
+<style>
+:root {
+  --bg: #f6f4ef; --panel: #fffdf9; --ink: #1f1d1a; --muted: #6f6a62; --line: #e4dfd5;
+  --accent: #b4532a; --up: #2f8f5b; --down: #c8402f; --warn: #c58a12; --hover: #fbf6ee;
+  --shadow: 0 1px 2px rgba(40, 30, 20, .06), 0 4px 14px rgba(40, 30, 20, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161513; --panel: #1f1d1a; --ink: #ece7de; --muted: #9a9389; --line: #34302b;
+    --accent: #e0855a; --up: #4cc283; --down: #f06a58; --warn: #e8b33c; --hover: #262320;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161513; --panel: #1f1d1a; --ink: #ece7de; --muted: #9a9389; --line: #34302b;
+  --accent: #e0855a; --up: #4cc283; --down: #f06a58; --warn: #e8b33c; --hover: #262320;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+h1 { margin: 0; font-size: 28px; letter-spacing: -.02em; }
+.sub { color: var(--muted); margin-top: 2px; }
+.summary { font-weight: 600; }
+.summary.bad { color: var(--down); }
+#search { width: min(320px, 100%); padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); color: var(--ink); font: inherit; outline: none; }
+#search:focus { border-color: var(--accent); }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 28px 0 10px; font-weight: 600; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.card { position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 14px; border: 1px solid var(--line);
+  border-radius: 14px; background: var(--panel); color: inherit; text-decoration: none; box-shadow: var(--shadow);
+  transition: border-color .15s, background .15s, transform .15s; }
+a.card:hover, a.card:focus-visible, .card.show:hover { border-color: var(--accent); background: var(--hover); transform: translateY(-1px); outline: none; }
+.card.off { opacity: .55; }
+.card.show { cursor: pointer; }
+.icon { font-size: 24px; line-height: 1; width: 32px; text-align: center; flex: none; padding-top: 2px; }
+.name { font-weight: 600; }
+.desc { color: var(--muted); font-size: 13.5px; }
+.badge { display: inline-block; margin-top: 6px; font-size: 11.5px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.badge.down { color: var(--down); border-color: currentColor; }
+.dot { position: absolute; top: 14px; right: 14px; width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.dot.up { background: var(--up); } .dot.down { background: var(--down); } .dot.warn { background: var(--warn); }
+.bg { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { position: relative; padding: 6px 12px 6px 26px; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); font-size: 13.5px; }
+.pill .dot { top: 50%; left: 11px; right: auto; transform: translateY(-50%); width: 8px; height: 8px; }
+.pill small { color: var(--muted); }
+footer { margin-top: 32px; color: var(--muted); font-size: 12.5px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+.hidden { display: none !important; }
+.err { color: var(--down); }
+@media (max-width: 520px) { main { padding-top: 20px; } h1 { font-size: 24px; } #search { width: 100%; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1 id="greet">Dragonclaw</h1>
+      <div class="sub"><span id="date"></span> · <span class="summary" id="summary">checking…</span></div>
+    </div>
+    <input id="search" type="search" placeholder="Search services  ( / )" autocomplete="off" aria-label="Search services">
+  </header>
+  <div id="sections"></div>
+  <footer>
+    <span id="checked"></span>
+    <span>Dragonclaw home server</span>
+  </footer>
+</main>
+<script src="services.js"></script>
+<script>
+// Showcase copy of the Dragonclaw homepage. Only the Demos cards are real:
+// they link out and their status dots are genuinely checked from the browser.
+// Every other card is for show: always "running", and clicking it does nothing.
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const cfg = SERVICES;
+const all = cfg.sections.flatMap(sec => sec.services);
+const live = all.filter(s => s.url);
+const last = {};                       // name -> {ok, waking, why}
+all.filter(s => !s.url).forEach(s => last[s.name] = { ok: true });
+
+function greet() {
+  const h = new Date().getHours();
+  $("#greet").textContent = (h < 5 ? "Late night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ", Jeremy";
+  $("#date").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+
+const dotClass = st => !st ? "" : st.ok ? "up" : st.waking ? "warn" : "down";
+const stateText = st => !st ? "checking…" : st.ok ? "running" : st.waking ? "waking up…" : (st.why || "not answering");
+
+function render() {
+  const q = $("#search").value.trim().toLowerCase();
+  const match = s => !q || (s.name + " " + (s.desc || "")).toLowerCase().includes(q);
+  $("#sections").innerHTML = cfg.sections.map(sec => {
+    const items = sec.services.filter(match);
+    if (!items.length) return "";
+    if (sec.background) {
+      return `<h2>${esc(sec.name)}</h2><div class="bg">` + items.map(s =>
+        `<span class="pill" title="running"><span class="dot up"></span>${esc(s.name)} <small>${esc(s.desc || "")}</small></span>`
+      ).join("") + `</div>`;
+    }
+    return `<h2>${esc(sec.name)}</h2><div class="grid">` + items.map(s => {
+      const st = last[s.name];
+      const badge = st && !st.ok ? `<span class="badge${st.waking ? "" : " down"}">${esc(stateText(st))}</span>` : "";
+      const inner = `<span class="icon">${esc(s.icon || "•")}</span><span><div class="name">${esc(s.name)}</div>` +
+        `<div class="desc">${esc(s.desc || "")}</div>${badge}</span><span class="dot ${dotClass(st)}" title="${esc(stateText(st))}"></span>`;
+      return s.url
+        ? `<a class="card" href="${esc(s.url)}" target="_blank" rel="noopener">${inner}</a>`
+        : `<div class="card show" role="link" tabindex="0">${inner}</div>`;
+    }).join("") + `</div>`;
+  }).join("") || `<p class="sub">No service matches “${esc(q)}”.</p>`;
+}
+
+function summary() {
+  const down = Object.entries(last).filter(([, s]) => !s.ok && !s.waking).map(([n]) => n);
+  const waking = Object.entries(last).filter(([, s]) => s.waking).map(([n]) => n);
+  const el = $("#summary");
+  el.textContent = down.length ? `${down.length} down: ${down.join(", ")}`
+    : waking.length ? `waking up: ${waking.join(", ")}`
+    : `all ${all.length} services running`;
+  el.classList.toggle("bad", down.length > 0);
+}
+
+// Real check of one demo. GitHub Pages allows CORS, so we see the true HTTP status.
+// Render doesn't, so we fall back to an opaque request: it resolves if the server answered at all.
+async function check(s) {
+  const slow = setTimeout(() => { last[s.name] = { ok: false, waking: true }; summary(); render(); }, 4000);
+  const ctl = new AbortController(), kill = setTimeout(() => ctl.abort(), 90000);
+  const opts = { cache: "no-store", signal: ctl.signal };
+  try {
+    try {
+      const r = await fetch(s.url, opts);
+      last[s.name] = r.ok ? { ok: true } : { ok: false, why: `error ${r.status}` };
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+      // GitHub Pages sends CORS on every good page, so a failure there means missing/broken.
+      if (new URL(s.url).hostname.endsWith(".github.io")) { last[s.name] = { ok: false, why: "page not found" }; return; }
+      await fetch(s.url, { ...opts, mode: "no-cors" });
+      last[s.name] = { ok: true };
+    }
+  } catch (e) {
+    last[s.name] = { ok: false, why: e.name === "AbortError" ? "timed out" : "not answering" };
+  } finally {
+    clearTimeout(slow); clearTimeout(kill);
+  }
+}
+
+let busy = false;
+async function refresh() {
+  if (busy) return;
+  busy = true;
+  await Promise.all(live.map(s => check(s).then(() => { summary(); render(); })));
+  busy = false;
+  $("#checked").textContent = "Checked " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " · Tailscale connected";
+}
+
+greet();
+render();
+refresh();
+setInterval(refresh, 30000);
+setInterval(greet, 60000);
+
+$("#search").addEventListener("input", render);
+$("#search").addEventListener("keydown", e => {
+  if (e.key === "Enter") { const a = document.querySelector("a.card"); if (a) window.open(a.href, "_blank", "noopener"); }
+  if (e.key === "Escape") { e.target.value = ""; render(); e.target.blur(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== $("#search")) { e.preventDefault(); $("#search").focus(); }
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>
